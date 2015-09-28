@@ -22,23 +22,30 @@ class SensitivityCalculator(object):
         disappearance.
 
         """
-        # physics parameters
-        self.params = Parameters.neutrinoParams_best.copy()
-        # Number of neutrinos produced that will hit detector
         self.neutrino_energy = 3 * U.GeV
         self.baseline = 1300 * U.km
-        self.params['deltaCP'] = math.pi / 2
+        # physics parameters
+        num_deltaCP_values = 100
+        deltaCP_max = math.pi
+        deltaCP_min = -math.pi
+        self.param_sets = [Parameters.neutrinoParams_best.copy() for i
+                in range(num_deltaCP_values)]
+        for i in range(num_deltaCP_values):
+            param_set = self.param_sets[i]
+            param_set['deltaCP'] = (deltaCP_min + (deltaCP_max -
+                    deltaCP_min)/num_deltaCP_values * i)
 
-        self.oscillator = Oscillator.Oscillator.fromParameterSet(self.params, U.rho_e,
-                self.neutrino_energy)
+        self.oscillators = [Oscillator.Oscillator.fromParameterSet(params, U.rho_e,
+                self.neutrino_energy) for params in self.param_sets]
 
-    def calculateOscillation(self):
+    def calculateOscillations(self):
         """
         Calculate and save the oscillation probabilities.
 
         """
         initial_state = Oscillator.NeutrinoState(0, 1, 0, True);
-        final_state = self.oscillator.evolve(initial_state,
-                self.baseline);
+        final_states = [oscillator.evolve(initial_state, self.baseline)
+                for oscillator in self.oscillators]
         self.initial_state = initial_state
-        self.final_state = final_state
+        self.final_states = final_states
+        return final_states
