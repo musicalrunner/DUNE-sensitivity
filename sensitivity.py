@@ -142,3 +142,16 @@ class SensitivityCalculator(object):
         nubar_detected = np.asarray(newOscillator.evolve(self.nubar_initial_state,
                 self.baseline).probabilities()) * nubar_num_produced
         return np.concatenate((nu_detected[:2], nubar_detected[:2]))
+
+    @staticmethod
+    def legendString():
+        """
+        Returns a list of strings to use as the legend.
+
+          - nu e
+          - nu mu
+          - nu e bar
+          - nu mu bar
+        """
+        return [r"$\nu_{e}$", r"$\nu_{\mu}$", r"$\bar{\nu}_{e}$",
+                r"$\bar{\nu}_{\mu}$"]
