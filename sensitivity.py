@@ -10,6 +10,7 @@ import Oscillator.Units as U
 import Oscillator.Oscillator as Oscillator
 import operator
 import numpy as np
+import matplotlib.pyplot as plt
 
 class SensitivityCalculator(object):
     """
@@ -25,10 +26,12 @@ class SensitivityCalculator(object):
         """
         self.neutrino_energy = 3 * U.GeV
         self.baseline = 1300 * U.km
-        # physics parameters
+        # Delta CP values to calculate oscillation parameters for
         self.num_deltaCP_values = 100
         self.deltaCP_max = np.pi
         self.deltaCP_min = -np.pi
+        self.chi_squares = []
+        # Parameter sets representing the different values of delta CP
         self.param_sets = [Parameters.neutrinoParams_best.copy() for i
                 in range(self.num_deltaCP_values)]
         for i in range(self.num_deltaCP_values):
@@ -36,6 +39,7 @@ class SensitivityCalculator(object):
             param_set['deltaCP'] = (self.deltaCP_min + (self.deltaCP_max -
                     self.deltaCP_min)/self.num_deltaCP_values * i)
 
+        # Create an oscillation calculator for each value of delta CP
         self.oscillators = [Oscillator.Oscillator.fromParameterSet(params, U.rho_e,
                 self.neutrino_energy) for params in self.param_sets]
 
@@ -47,34 +51,39 @@ class SensitivityCalculator(object):
         nu_initial_state = Oscillator.NeutrinoState(0, 1, 0, True);
         nu_final_states = [oscillator.evolve(nu_initial_state,
             self.baseline) for oscillator in self.oscillators]
+
         nubar_initial_state = Oscillator.NeutrinoState(0, 1, 0, False);
         nubar_final_states = [oscillator.evolve(nubar_initial_state,
             self.baseline) for oscillator in self.oscillators]
+
         self.nu_initial_state = nu_initial_state
         self.nubar_initial_state = nubar_initial_state
         self.nu_final_states = nu_final_states
         self.nubar_final_states = nubar_final_states
         return (nu_final_states, nubar_final_states)
 
-    def plotProbabilities(self, flavor=1):
+    def plotProbabilities(self):
         """
         Plot the probabilities of observing a given flavor for the range
         of delta CP values given in the constructor.
 
         """
-        import matplotlib.pyplot as plt
 
         if not hasattr(self, 'nu_final_states'):
             self.calculateOscillations()
         x_values = np.arange(self.deltaCP_min, self.deltaCP_max,
                 (self.deltaCP_max -
                     self.deltaCP_min)/self.num_deltaCP_values)
-        y_values = [state.probabilities()[flavor] for state in
-                self.final_states]
+        y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
+                for state in self.nu_final_states]
         plt.plot(x_values, y_values)
+        y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
+                for state in self.nubar_final_states]
+        plt.plot(x_values, y_values)
+        plt.legend(self.legendString())
         plt.show()
 
-    def chiSquares(self, num_detecteds, num_produceds,
+    def _chiSquares(self, num_detecteds, num_produceds,
             relative_uncertainties):
         """
         Return the chi-square for each value of delta CP for the given
@@ -86,17 +95,22 @@ class SensitivityCalculator(object):
         if not hasattr(self, 'nu_final_states'):
             self.calculateOscillations()
 
+        # Take the first two neutrino flavors' probabilities multiplied
+        # by the number of (anti)neutrinos produced
         nu_num_expecteds = \
-                [np.asarray(state.probabilities()[:-1])*num_produceds[0]
+                [np.asarray(state.probabilities()[0:2])*num_produceds[0]
                 for state in self.nu_final_states]
         nubar_num_expecteds = \
-                [np.asarray(state.probabilities()[:-1])*num_produceds[1]
+                [np.asarray(state.probabilities()[0:2])*num_produceds[1]
                 for state in self.nubar_final_states]
 
+        # Compute sigma by multiplyint the relative uncertainty by the
+        # number of detected (anti)neutrinos
         nu_sigmas = map(operator.mul,
                 relative_uncertainties[:2], num_detecteds[:2])
         nubar_sigmas = map(operator.mul,
                 relative_uncertainties[2:], num_detecteds[2:])
+
         chiSquares = []
         for num_expected_by_flavor in zip(nu_num_expecteds,
                 nubar_num_expecteds):
@@ -114,6 +128,7 @@ class SensitivityCalculator(object):
                 chiSquare += ((expected - detected)/sigma)**2
             chiSquares.append(chiSquare)
 
+        self.chi_squares = chiSquares
         return chiSquares
 
     def testDeltaCPs(self):
