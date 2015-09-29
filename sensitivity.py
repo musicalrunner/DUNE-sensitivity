@@ -120,12 +120,15 @@ class SensitivityCalculator(object):
                 expected = num_expected_by_flavor[0][neutrino_flavor]
                 detected = num_detecteds[:2][neutrino_flavor]
                 sigma = nu_sigmas[neutrino_flavor]
-                chiSquare += ((expected - detected)/sigma)**2
+                # error^2 = (sigma (syst.))^2 + (sqrt(N))^2
+                chiSquare += ((expected - detected)**2/(sigma*sigma +
+                    detected))
                 # now antineutrinos
                 expected = num_expected_by_flavor[1][neutrino_flavor]
                 detected = num_detecteds[2:][neutrino_flavor]
                 sigma = nubar_sigmas[neutrino_flavor]
-                chiSquare += ((expected - detected)/sigma)**2
+                chiSquare += ((expected - detected)**2/(sigma*sigma +
+                    detected))
             chiSquares.append(chiSquare)
 
         self.chi_squares = chiSquares
