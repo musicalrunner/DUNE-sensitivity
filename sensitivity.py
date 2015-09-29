@@ -173,3 +173,53 @@ class SensitivityCalculator(object):
         """
         return [r"$\nu_{e}$", r"$\nu_{\mu}$", r"$\bar{\nu}_{e}$",
                 r"$\bar{\nu}_{\mu}$"]
+
+    def chiSquares(self, num_neutrinos, syst_errors, true_deltaCP):
+        """
+        Calculate the chi square for different values of delta CP under the
+        given experimental conditions:
+
+          - num_neutrinos: the number of neutrinos before oscillation.
+            The effective number of antineutrinos is calculated as a
+            fraction of the number of neutrinos.
+          - syst_errors: a list of relative systematic errors in the
+            order [nu_e, nu_mu, nu_e_bar, nu_mu_bar]
+          - true_deltaCP: the value of deltaCP to use to calculate
+            oscillations.
+
+        """
+        if len(self.chi_squares) > 0:
+            return self.chi_squares
+        num_antineutrinos = 0.1 * num_neutrinos
+        num_detecteds = self.detectedEvents(num_neutrinos,
+                num_antineutrinos, true_deltaCP)
+        num_produceds = [num_neutrinos, num_antineutrinos]
+        self.chi_squares = self._chiSquares(num_detecteds, num_produceds,
+                syst_errors)
+        return self.chi_squares
+
+    def plotChiSquare(self, num_neutrinos, syst_errors, true_deltaCP):
+        """
+        Plot the chi square for different values of delta CP under the
+        given experimental conditions:
+
+          - num_neutrinos: the number of neutrinos before oscillation.
+            The effective number of antineutrinos is calculated as a
+            fraction of the number of neutrinos.
+          - syst_errors: a list of relative systematic errors in the
+            order [nu_e, nu_mu, nu_e_bar, nu_mu_bar]
+          - true_deltaCP: the value of deltaCP to use to calculate
+            oscillations.
+
+        """
+        figure = plt.figure()
+        deltaCP_values = map(lambda x:x/np.pi, self.testDeltaCPs())
+        rootChiSquare_values = map(np.sqrt, self.chiSquares(num_neutrinos, syst_errors,
+                true_deltaCP))
+        axes = figure.add_subplot(111)
+        axes.plot(deltaCP_values, rootChiSquare_values)
+        axes.set_xticks(deltaCP_values[::10])
+        axes.set_xlabel(r"$\delta_{CP} [\pi]$")
+        axes.set_ylabel(r"$\sqrt{\Delta\chi^{2}}$")
+        axes.set_xlim(deltaCP_values[0], deltaCP_values[-1])
+        return figure
