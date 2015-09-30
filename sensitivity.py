@@ -188,8 +188,7 @@ class SensitivityCalculator(object):
             oscillations.
 
         """
-        if len(self.chi_squares) > 0:
-            return self.chi_squares
+        self.chi_squares = []
         num_antineutrinos = 0.1 * num_neutrinos
         num_detecteds = self.detectedEvents(num_neutrinos,
                 num_antineutrinos, true_deltaCP)
