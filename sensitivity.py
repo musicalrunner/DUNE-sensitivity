@@ -19,7 +19,7 @@ class SensitivityCalculator(object):
 
     """
     
-    def __init__(self, energyInGeV=3):
+    def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, energyInGeV):
         """
         Create a new SensitivityCalculator for muon neutrino
         disappearance.
@@ -28,9 +28,9 @@ class SensitivityCalculator(object):
         self.neutrino_energy = energyInGeV * U.GeV
         self.baseline = 1300 * U.km
         # Delta CP values to calculate oscillation parameters for
-        self.num_deltaCP_values = 100
-        self.deltaCP_max = np.pi
-        self.deltaCP_min = -np.pi
+        self.num_deltaCP_values = num_deltaCPs
+        self.deltaCP_max = deltaCP_max
+        self.deltaCP_min = deltaCP_min
         self.syst_errors = [0.02, 0.05, 0.02, 0.05]
         self.chi_squares = []
         # Parameter sets representing the different values of delta CP
@@ -39,11 +39,29 @@ class SensitivityCalculator(object):
         for i in range(self.num_deltaCP_values):
             param_set = self.param_sets[i]
             param_set['deltaCP'] = (self.deltaCP_min + (self.deltaCP_max -
-                    self.deltaCP_min)/self.num_deltaCP_values * i)
+                    self.deltaCP_min)/(self.num_deltaCP_values-1) * i)
 
         # Create an oscillation calculator for each value of delta CP
         self.oscillators = [Oscillator.Oscillator.fromParameterSet(params, U.rho_e,
                 self.neutrino_energy) for params in self.param_sets]
+
+    @classmethod
+    def sensitivityTester(cls, energyInGeV=3):
+        """
+        Return a SensitivityCalculator set up to scan over fine-grained
+        delta-CP values.
+
+        """
+        return cls(np.pi, -np.pi, 100, energyInGeV)
+
+    @classmethod
+    def probabilityViewer(cls, energyInGeV=3):
+        """
+        Return a SensitivityCalculator set up over a few delta-CP
+        values.
+
+        """
+        return cls(np.pi/2, -np.pi/2, 3, energyInGeV)
 
     def calculateOscillations(self):
         """
