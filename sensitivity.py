@@ -30,6 +30,7 @@ class SensitivityCalculator(object):
         self.num_deltaCP_values = 100
         self.deltaCP_max = np.pi
         self.deltaCP_min = -np.pi
+        self.syst_errors = [0.02, 0.05, 0.02, 0.05]
         self.chi_squares = []
         # Parameter sets representing the different values of delta CP
         self.param_sets = [Parameters.neutrinoParams_best.copy() for i
@@ -83,8 +84,7 @@ class SensitivityCalculator(object):
         plt.legend(self.legendString())
         plt.show()
 
-    def _chiSquares(self, num_detecteds, num_produceds,
-            relative_uncertainties):
+    def _chiSquares(self, num_detecteds, num_produceds):
         """
         Return the chi-square for each value of delta CP for the given
         detected number of e and mu neutrinos, assuming there were num_produced
@@ -107,9 +107,9 @@ class SensitivityCalculator(object):
         # Compute sigma by multiplyint the relative uncertainty by the
         # number of detected (anti)neutrinos
         nu_sigmas = map(operator.mul,
-                relative_uncertainties[:2], num_detecteds[:2])
+                self.syst_errors[:2], num_detecteds[:2])
         nubar_sigmas = map(operator.mul,
-                relative_uncertainties[2:], num_detecteds[2:])
+                self.syst_errors[2:], num_detecteds[2:])
 
         chiSquares = []
         for num_expected_by_flavor in zip(nu_num_expecteds,
@@ -174,7 +174,7 @@ class SensitivityCalculator(object):
         return [r"$\nu_{e}$", r"$\nu_{\mu}$", r"$\bar{\nu}_{e}$",
                 r"$\bar{\nu}_{\mu}$"]
 
-    def chiSquares(self, num_neutrinos, syst_errors, true_deltaCP):
+    def chiSquares(self, num_neutrinos, true_deltaCP):
         """
         Calculate the chi square for different values of delta CP under the
         given experimental conditions:
@@ -193,11 +193,10 @@ class SensitivityCalculator(object):
         num_detecteds = self.detectedEvents(num_neutrinos,
                 num_antineutrinos, true_deltaCP)
         num_produceds = [num_neutrinos, num_antineutrinos]
-        self.chi_squares = self._chiSquares(num_detecteds, num_produceds,
-                syst_errors)
+        self.chi_squares = self._chiSquares(num_detecteds, num_produceds)
         return self.chi_squares
 
-    def plotChiSquare(self, num_neutrinos, syst_errors, true_deltaCP):
+    def plotChiSquare(self, num_neutrinos, true_deltaCP):
         """
         Plot the chi square for different values of delta CP under the
         given experimental conditions:
