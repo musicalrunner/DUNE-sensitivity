@@ -18,13 +18,13 @@ class SensitivityCalculator(object):
 
     """
     
-    def __init__(self):
+    def __init__(self, energyInGeV=3):
         """
         Create a new SensitivityCalculator for muon neutrino
         disappearance.
 
         """
-        self.neutrino_energy = 3 * U.GeV
+        self.neutrino_energy = energyInGeV * U.GeV
         self.baseline = 1300 * U.km
         # Delta CP values to calculate oscillation parameters for
         self.num_deltaCP_values = 100
