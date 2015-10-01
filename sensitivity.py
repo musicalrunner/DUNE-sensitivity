@@ -11,6 +11,7 @@ import Oscillator.Oscillator as Oscillator
 import operator
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 class SensitivityCalculator(object):
     """
@@ -143,7 +144,8 @@ class SensitivityCalculator(object):
                 self.deltaCP_min)/self.num_deltaCP_values
         return [self.deltaCP_min + step * i for i in range(self.num_deltaCP_values)]
 
-    def detectedEvents(self, nu_num_produced, nubar_num_produced, deltaCP):
+    def detectedEvents(self, nu_num_produced, nubar_num_produced,
+            deltaCP, includeErrors=True):
         """
         Get the number of events that would be detected in a perfect
         detector given the number of unoscillated neutrinos and deltaCP.
@@ -159,7 +161,15 @@ class SensitivityCalculator(object):
                 self.baseline).probabilities()) * nu_num_produced
         nubar_detected = np.asarray(newOscillator.evolve(self.nubar_initial_state,
                 self.baseline).probabilities()) * nubar_num_produced
-        return np.concatenate((nu_detected[:2], nubar_detected[:2]))
+        num_detecteds = np.concatenate((nu_detected[:2], nubar_detected[:2]))
+        if includeErrors:
+            # Statistical errors
+            num_detecteds = map(lambda n: n + random.gauss(0, np.sqrt(n)),
+                    num_detecteds)
+            # Systematic errors
+            num_detecteds = [n + random.gauss(0, err*n) for (n, err) in
+                    zip(num_detecteds, self.syst_errors)]
+        return num_detecteds
 
     @staticmethod
     def legendString():
@@ -188,6 +198,7 @@ class SensitivityCalculator(object):
             oscillations.
 
         """
+        random.seed(0)
         self.chi_squares = []
         num_antineutrinos = 0.1 * num_neutrinos
         num_detecteds = self.detectedEvents(num_neutrinos,
@@ -211,13 +222,17 @@ class SensitivityCalculator(object):
 
         """
         figure = plt.figure()
-        deltaCP_values = map(lambda x:x/np.pi, self.testDeltaCPs())
-        rootChiSquare_values = map(np.sqrt, self.chiSquares(num_neutrinos, syst_errors,
-                true_deltaCP))
+        deltaCP_values = [delta/np.pi for delta in self.testDeltaCPs()]
+        chiSquares = self.chiSquares(num_neutrinos, true_deltaCP)
+        minChiSquare = min(chiSquares)
+        deltaChiSquares = [chiSquare - minChiSquare for chiSquare in
+                chiSquares]
+        rootChiSquare_values = [np.sqrt(deltaChiSquare) for
+                deltaChiSquare in deltaChiSquares]
         axes = figure.add_subplot(111)
         axes.plot(deltaCP_values, rootChiSquare_values)
         axes.set_xticks(deltaCP_values[::10])
-        axes.set_xlabel(r"$\delta_{CP} [\pi]$")
+        axes.set_xlabel(r"$\delta_{CP}/\pi$")
         axes.set_ylabel(r"$\sqrt{\Delta\chi^{2}}$")
         axes.set_xlim(deltaCP_values[0], deltaCP_values[-1])
         return figure
