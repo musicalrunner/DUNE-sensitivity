@@ -113,6 +113,10 @@ class SensitivityCalculator(object):
         y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
                 for state in zip(*self.nubar_final_states)[energyBin]]
         plt.plot(x_values, y_values)
+        plt.xlabel(r"$\delta_{CP}$")
+        plt.ylabel("Oscillation Probability at 1300 km")
+        plt.title("Oscillation probability for " +
+                str(self.energies[energyBin]/U.GeV) + " GeV neutrinos")
         plt.legend(self.legendString())
         plt.show()
 
@@ -297,6 +301,15 @@ def plotNuEAppearanceProb(antiNeutrino=False):
     plt.grid(True)
     plt.ylim([0, 0.2])
     axes = figure.add_subplot(111)
+    axes.set_color_cycle(['b', 'r', 'g'])
     axes.set_xscale('log')
+    axes.set_xlabel("Neutrino Energy [GeV]")
+    axes.set_ylabel("Oscillation Probability")
+    axes.set_title("Oscillation Probability for Neutrinos over 1300 km")
     axes.plot(energies, nue_probs)
+    [axes.fill_between(energies, probs, color=color) for probs, color in
+            zip(zip(*nue_probs), ['b', 'r', 'g'])]
+    legendStrings = [r"$\delta_{CP} = -\pi/2$", r"$\delta_{CP} = 0$",
+            r"$\delta_{CP} = +\pi/2$"]
+    plt.legend(legendStrings)
     return figure
