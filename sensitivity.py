@@ -18,13 +18,22 @@ class SensitivityCalculator(object):
 
     """
     
-    def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, energyInGeV):
+    def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, spectrum):
         """
         Create a new SensitivityCalculator for muon neutrino
         disappearance.
 
+        The spectrum must be a sequence of (energyInGeV, relativeAmount)
+        pairs. The neutrino sample will then be composed of a sum of
+        discrete energy samples. The relative amounts do not have to add
+        to 1.
+
         """
-        self.neutrino_energy = energyInGeV * U.GeV
+        self.spectrum = spectrum
+        self.energies, self.energyWeights = map(list, zip(*spectrum))
+        self.energies = [E * U.GeV for E in self.energies]
+        self.energyWeights = (np.asarray(self.energyWeights) /
+                sum(self.energyWeights))
         self.baseline = 1300 * U.km
         # Delta CP values to calculate oscillation parameters for
         self.num_deltaCP_values = num_deltaCPs
@@ -41,26 +50,32 @@ class SensitivityCalculator(object):
                     self.deltaCP_min)/(self.num_deltaCP_values-1) * i)
 
         # Create an oscillation calculator for each value of delta CP
-        self.oscillators = [Oscillator.Oscillator.fromParameterSet(params, U.rho_e,
-                self.neutrino_energy) for params in self.param_sets]
+        self.oscillators = [[
+            Oscillator.Oscillator.fromParameterSet(params, U.rho_e,
+            neutrino_energy) for neutrino_energy in self.energies] for
+            params in self.param_sets]
 
     @classmethod
-    def sensitivityTester(cls, energyInGeV=3):
+    def sensitivityTester(cls, spectrum=None):
         """
         Return a SensitivityCalculator set up to scan over fine-grained
         delta-CP values.
 
         """
-        return cls(np.pi, -np.pi, 100, energyInGeV)
+        if not spectrum:
+            spectrum = [(3, 1)]
+        return cls(np.pi, -np.pi, 100, spectrum)
 
     @classmethod
-    def probabilityViewer(cls, energyInGeV=3):
+    def probabilityViewer(cls, spectrum=None):
         """
         Return a SensitivityCalculator set up over a few delta-CP
         values.
 
         """
-        return cls(np.pi/2, -np.pi/2, 3, energyInGeV)
+        if not spectrum:
+            spectrum = [(3, 1)]
+        return cls(np.pi/2, -np.pi/2, 3, spectrum)
 
     def calculateOscillations(self):
         """
@@ -68,12 +83,14 @@ class SensitivityCalculator(object):
 
         """
         nu_initial_state = Oscillator.NeutrinoState(0, 1, 0, True);
-        nu_final_states = [oscillator.evolve(nu_initial_state,
-            self.baseline) for oscillator in self.oscillators]
+        nu_final_states = [[oscillator.evolve(nu_initial_state,
+            self.baseline) for oscillator in oscSubList] for oscSubList
+            in self.oscillators]
 
         nubar_initial_state = Oscillator.NeutrinoState(0, 1, 0, False);
-        nubar_final_states = [oscillator.evolve(nubar_initial_state,
-            self.baseline) for oscillator in self.oscillators]
+        nubar_final_states = [[oscillator.evolve(nubar_initial_state,
+            self.baseline) for oscillator in oscSubList] for oscSubList
+            in self.oscillators]
 
         self.nu_initial_state = nu_initial_state
         self.nubar_initial_state = nubar_initial_state
@@ -81,23 +98,20 @@ class SensitivityCalculator(object):
         self.nubar_final_states = nubar_final_states
         return (nu_final_states, nubar_final_states)
 
-    def plotProbabilities(self):
+    def plotProbabilities(self, energyBin = 0):
         """
         Plot the probabilities of observing a given flavor for the range
         of delta CP values given in the constructor.
 
         """
-
         if not hasattr(self, 'nu_final_states'):
             self.calculateOscillations()
-        x_values = np.arange(self.deltaCP_min, self.deltaCP_max,
-                (self.deltaCP_max -
-                    self.deltaCP_min)/self.num_deltaCP_values)
+        x_values = self.testDeltaCPs()
         y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
-                for state in self.nu_final_states]
+                for state in zip(*self.nu_final_states)[energyBin]]
         plt.plot(x_values, y_values)
         y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
-                for state in self.nubar_final_states]
+                for state in zip(*self.nubar_final_states)[energyBin]]
         plt.plot(x_values, y_values)
         plt.legend(self.legendString())
         plt.show()
@@ -115,14 +129,26 @@ class SensitivityCalculator(object):
 
         # Take the first two neutrino flavors' probabilities multiplied
         # by the number of (anti)neutrinos produced
-        nu_num_expecteds = \
-                [np.asarray(state.probabilities()[0:2])*num_produceds[0]
-                for state in self.nu_final_states]
-        nubar_num_expecteds = \
-                [np.asarray(state.probabilities()[0:2])*num_produceds[1]
-                for state in self.nubar_final_states]
+        # Sum the expected number over the energy spectrum
+        # Note: zip(*list) has the effect of transposing the list
+        nu_num_expecteds_by_energy = \
+                [[np.asarray(state.probabilities()[0:2]) *
+                    num_produceds[0] * weight for state, weight in
+                    zip(energyStates, self.energyWeights)] for energyStates
+                    in self.nu_final_states]
+        nu_num_expecteds = [[sum(allEnergies) for allEnergies in
+                zip(*allFlavors)] for allFlavors in
+                nu_num_expecteds_by_energy]
+        nubar_num_expecteds_by_energy = \
+                [[np.asarray(state.probabilities()[0:2]) *
+                    num_produceds[1] * weight for state, weight
+                    in zip(energyStates, self.energyWeights)] for
+                    energyStates in self.nubar_final_states]
+        nubar_num_expecteds = [[sum(allEnergies) for allEnergies in
+                zip(*allFlavors)] for allFlavors in
+                nubar_num_expecteds_by_energy]
 
-        # Compute sigma by multiplyint the relative uncertainty by the
+        # Compute sigma by multiplying the relative uncertainty by the
         # number of detected (anti)neutrinos
         nu_sigmas = map(operator.mul,
                 self.syst_errors[:2], num_detecteds[:2])
@@ -158,7 +184,7 @@ class SensitivityCalculator(object):
 
         """
         step = (self.deltaCP_max -
-                self.deltaCP_min)/self.num_deltaCP_values
+                self.deltaCP_min)/(self.num_deltaCP_values-1)
         return [self.deltaCP_min + step * i for i in range(self.num_deltaCP_values)]
 
     def detectedEvents(self, nu_num_produced, nubar_num_produced, deltaCP):
@@ -171,12 +197,20 @@ class SensitivityCalculator(object):
             self.calculateOscillations()
         params = Parameters.neutrinoParams_best.copy()
         params['deltaCP'] = deltaCP
-        newOscillator = Oscillator.Oscillator.fromParameterSet(params,
-                U.rho_e, self.neutrino_energy)
-        nu_detected = np.asarray(newOscillator.evolve(self.nu_initial_state,
+        newOscillators = [Oscillator.Oscillator.fromParameterSet(params,
+                U.rho_e, energy) for energy in self.energies]
+        nu_detected_by_energy = [np.asarray(osc.evolve(self.nu_initial_state,
                 self.baseline).probabilities()) * nu_num_produced
-        nubar_detected = np.asarray(newOscillator.evolve(self.nubar_initial_state,
+                * weight for osc, weight in zip(newOscillators,
+                    self.energyWeights)]
+        nu_detected = [sum(energies) for energies in
+                zip(*nu_detected_by_energy)]
+        nubar_detected_by_energy = [np.asarray(osc.evolve(self.nubar_initial_state,
                 self.baseline).probabilities()) * nubar_num_produced
+                * weight for osc, weight in zip(newOscillators,
+                    self.energyWeights)]
+        nubar_detected = [sum(energies) for energies in
+                zip(*nubar_detected_by_energy)]
         return np.concatenate((nu_detected[:2], nubar_detected[:2]))
 
     @staticmethod
@@ -238,7 +272,6 @@ class SensitivityCalculator(object):
                 deltaChiSquare in deltaChiSquares]
         axes = figure.add_subplot(111)
         axes.plot(deltaCP_values, rootChiSquare_values)
-        axes.set_xticks(deltaCP_values[::10])
         axes.set_xlabel(r"$\delta_{CP}/\pi$")
         axes.set_ylabel(r"$\sqrt{\Delta\chi^{2}}$")
         axes.set_xlim(deltaCP_values[0], deltaCP_values[-1])
@@ -255,9 +288,9 @@ def plotNuEAppearanceProb(antiNeutrino=False):
     # Calculate for a set of 100 energies ranging logarithmically from
     # 0.1 GeV to 10 GeV
     energies = [0.1 * 1.047129**n for n in range(100)]
-    calcs = [SensitivityCalculator.probabilityViewer(energy) for energy in energies]
+    calcs = [SensitivityCalculator.probabilityViewer([(energy, 1)]) for energy in energies]
     [calc.calculateOscillations() for calc in calcs]
-    nuStates = [calc.nu_final_states for calc in calcs]
+    nuStates = [zip(*calc.nu_final_states)[0] for calc in calcs]
     nue_probs = [[state.probabilities()[0] for state in cpState] for cpState
             in nuStates]
     figure = plt.figure()
