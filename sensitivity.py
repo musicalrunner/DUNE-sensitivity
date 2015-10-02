@@ -254,3 +254,27 @@ class SensitivityCalculator(object):
         axes.set_ylabel(r"$\sqrt{\Delta\chi^{2}}$")
         axes.set_xlim(deltaCP_values[0], deltaCP_values[-1])
         return figure
+
+# Some functions
+def plotNuEAppearanceProb(antiNeutrino=False):
+    """
+    Plot the appearance probability for electron (anti)neutrinos as a
+    function of energy at 1300km for deltaCP = +/- Pi/2 and 0. This is
+    supposed to reproduce Figure 3.1 in the DUNE CDR.
+
+    """
+    # Calculate for a set of 100 energies ranging logarithmically from
+    # 0.1 GeV to 10 GeV
+    energies = [0.1 * 1.047129**n for n in range(100)]
+    calcs = [SensitivityCalculator.probabilityViewer(energy) for energy in energies]
+    [calc.calculateOscillations() for calc in calcs]
+    nuStates = [calc.nu_final_states for calc in calcs]
+    nue_probs = [[state.probabilities()[0] for state in cpState] for cpState
+            in nuStates]
+    figure = plt.figure()
+    plt.grid(True)
+    plt.ylim([0, 0.2])
+    axes = figure.add_subplot(111)
+    axes.set_xscale('log')
+    axes.plot(energies, nue_probs)
+    return figure
