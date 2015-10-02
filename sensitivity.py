@@ -11,7 +11,6 @@ import Oscillator.Oscillator as Oscillator
 import operator
 import numpy as np
 import matplotlib.pyplot as plt
-import random
 
 class SensitivityCalculator(object):
     """
@@ -162,8 +161,7 @@ class SensitivityCalculator(object):
                 self.deltaCP_min)/self.num_deltaCP_values
         return [self.deltaCP_min + step * i for i in range(self.num_deltaCP_values)]
 
-    def detectedEvents(self, nu_num_produced, nubar_num_produced,
-            deltaCP, includeErrors=True):
+    def detectedEvents(self, nu_num_produced, nubar_num_produced, deltaCP):
         """
         Get the number of events that would be detected in a perfect
         detector given the number of unoscillated neutrinos and deltaCP.
@@ -179,15 +177,7 @@ class SensitivityCalculator(object):
                 self.baseline).probabilities()) * nu_num_produced
         nubar_detected = np.asarray(newOscillator.evolve(self.nubar_initial_state,
                 self.baseline).probabilities()) * nubar_num_produced
-        num_detecteds = np.concatenate((nu_detected[:2], nubar_detected[:2]))
-        if includeErrors:
-            # Statistical errors
-            num_detecteds = map(lambda n: n + random.gauss(0, np.sqrt(n)),
-                    num_detecteds)
-            # Systematic errors
-            num_detecteds = [n + random.gauss(0, err*n) for (n, err) in
-                    zip(num_detecteds, self.syst_errors)]
-        return num_detecteds
+        return np.concatenate((nu_detected[:2], nubar_detected[:2]))
 
     @staticmethod
     def legendString():
@@ -216,7 +206,6 @@ class SensitivityCalculator(object):
             oscillations.
 
         """
-        random.seed(0)
         self.chi_squares = []
         num_antineutrinos = 0.1 * num_neutrinos
         num_detecteds = self.detectedEvents(num_neutrinos,
