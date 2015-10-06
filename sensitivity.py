@@ -128,7 +128,7 @@ class SensitivityCalculator(object):
         self.nubar_final_states = nubar_final_states
         return (nu_final_states, nubar_final_states)
 
-    def plotProbabilities(self, energyBin = 0):
+    def plotProbabilities(self, energyBin=0, showPlot=True):
         """
         Plot the probabilities of observing a given flavor for the range
         of delta CP values given in the constructor.
@@ -150,7 +150,8 @@ class SensitivityCalculator(object):
         plt.title("Oscillation probability for " +
                 str(self.energies[energyBin]/U.GeV) + " GeV neutrinos")
         plt.legend(self.legendString())
-        plt.show()
+        if showPlot:
+            plt.show()
         return (x_values, nu_values, nubar_values)
 
     def _chiSquares(self, num_detecteds, num_produceds):
