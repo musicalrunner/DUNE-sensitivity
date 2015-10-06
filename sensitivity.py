@@ -7,7 +7,8 @@ Author: Sam Kohn
 
 import Oscillator.NeutrinoParameters as Parameters
 import Oscillator.Units as U
-import Oscillator.Oscillator as Oscillator
+import Oscillator.Oscillator as Osc
+from Oscillator.Oscillator import NeutrinoState
 import operator
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,7 +19,8 @@ class SensitivityCalculator(object):
 
     """
     
-    def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, spectrum):
+    def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, spectrum,
+            GLoBES):
         """
         Create a new SensitivityCalculator for muon neutrino
         disappearance.
@@ -50,47 +52,75 @@ class SensitivityCalculator(object):
                     self.deltaCP_min)/(self.num_deltaCP_values-1) * i)
 
         # Create an oscillation calculator for each value of delta CP
-        self.oscillators = [[
-            Oscillator.Oscillator.fromParameterSet(params, U.rho_e,
-            neutrino_energy) for neutrino_energy in self.energies] for
-            params in self.param_sets]
+        self.globes = GLoBES
+        if GLoBES:
+            import Oscillator.Oscillator_GLoBES
+            self.oscillatorType = Oscillator.Oscillator_GLoBES.Oscillator_GLoBES
+            self.oscillators = [[
+                (self.oscillatorType.fromParameterSet, (params, U.rho_e,
+                neutrino_energy)) for neutrino_energy in self.energies] for
+                params in self.param_sets]
+        else:
+            self.oscillatorType = Osc.Oscillator
+            self.oscillators = [[
+                self.oscillatorType.fromParameterSet(params, U.rho_e,
+                neutrino_energy) for neutrino_energy in self.energies] for
+                params in self.param_sets]
 
     @classmethod
-    def sensitivityTester(cls, spectrum=None):
+    def sensitivityTester(cls, spectrum, GLoBES=False):
         """
         Return a SensitivityCalculator set up to scan over fine-grained
         delta-CP values.
 
         """
-        if not spectrum:
-            spectrum = [(3, 1)]
-        return cls(np.pi, -np.pi, 100, spectrum)
+        if not hasattr(spectrum, "__len__"):
+            spectrum = [(spectrum, 1)]
+        return cls(np.pi, -np.pi, 100, spectrum, GLoBES)
 
     @classmethod
-    def probabilityViewer(cls, spectrum=None):
+    def probabilityViewer(cls, spectrum, GLoBES=False):
         """
         Return a SensitivityCalculator set up over a few delta-CP
         values.
 
         """
-        if not spectrum:
-            spectrum = [(3, 1)]
-        return cls(np.pi/2, -np.pi/2, 3, spectrum)
+        if not hasattr(spectrum, "__len__"):
+            spectrum = [(spectrum, 1)]
+        return cls(np.pi/2, -np.pi/2, 3, spectrum, GLoBES)
 
     def calculateOscillations(self):
         """
         Calculate and save the oscillation probabilities.
 
         """
-        nu_initial_state = Oscillator.NeutrinoState(0, 1, 0, True);
-        nu_final_states = [[oscillator.evolve(nu_initial_state,
-            self.baseline) for oscillator in oscSubList] for oscSubList
-            in self.oscillators]
+        nu_initial_state = NeutrinoState(0, 1, 0, True);
+        # for oscillatorList in self.oscillators:
+            # for (oscillator, params) in oscillatorList:
+                # o = apply(oscillator, params)
+                # state = o.evolve(nu_initial_state,
+                        # self.baseline)
+                # print state.probabilities()
+                # del o
+        if self.globes:
+            nu_final_states = [[apply(oscillator, params).evolve(nu_initial_state,
+                self.baseline) for oscillator, params in oscSubList] for oscSubList
+                in self.oscillators]
+        else:
+            nu_final_states = [[oscillator.evolve(nu_initial_state,
+                self.baseline) for oscillator in oscSubList] for oscSubList
+                in self.oscillators]
 
-        nubar_initial_state = Oscillator.NeutrinoState(0, 1, 0, False);
-        nubar_final_states = [[oscillator.evolve(nubar_initial_state,
-            self.baseline) for oscillator in oscSubList] for oscSubList
-            in self.oscillators]
+        nubar_initial_state = NeutrinoState(0, 1, 0, False);
+        if self.globes:
+            nubar_final_states = [[apply(oscillator,
+                params).evolve(nubar_initial_state,
+                self.baseline) for oscillator, params in oscSubList] for oscSubList
+                in self.oscillators]
+        else:
+            nubar_final_states = [[oscillator.evolve(nubar_initial_state,
+                self.baseline) for oscillator in oscSubList] for oscSubList
+                in self.oscillators]
 
         self.nu_initial_state = nu_initial_state
         self.nubar_initial_state = nubar_initial_state
@@ -109,9 +139,11 @@ class SensitivityCalculator(object):
         x_values = self.testDeltaCPs()
         y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
                 for state in zip(*self.nu_final_states)[energyBin]]
+        nu_values = y_values
         plt.plot(x_values, y_values)
         y_values = [[state.probabilities()[flavor] for flavor in [0,1]]
                 for state in zip(*self.nubar_final_states)[energyBin]]
+        nubar_values = y_values
         plt.plot(x_values, y_values)
         plt.xlabel(r"$\delta_{CP}$")
         plt.ylabel("Oscillation Probability at 1300 km")
@@ -119,6 +151,7 @@ class SensitivityCalculator(object):
                 str(self.energies[energyBin]/U.GeV) + " GeV neutrinos")
         plt.legend(self.legendString())
         plt.show()
+        return (x_values, nu_values, nubar_values)
 
     def _chiSquares(self, num_detecteds, num_produceds):
         """
@@ -201,7 +234,7 @@ class SensitivityCalculator(object):
             self.calculateOscillations()
         params = Parameters.neutrinoParams_best.copy()
         params['deltaCP'] = deltaCP
-        newOscillators = [Oscillator.Oscillator.fromParameterSet(params,
+        newOscillators = [self.oscillatorType.fromParameterSet(params,
                 U.rho_e, energy) for energy in self.energies]
         nu_detected_by_energy = [np.asarray(osc.evolve(self.nu_initial_state,
                 self.baseline).probabilities()) * nu_num_produced
