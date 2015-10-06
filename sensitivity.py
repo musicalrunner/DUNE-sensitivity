@@ -347,3 +347,46 @@ def plotNuEAppearanceProb(antiNeutrino=False):
             r"$\delta_{CP} = +\pi/2$"]
     plt.legend(legendStrings)
     return figure
+
+def plotGLoBESvsDan(energy, antiNeutrino=False):
+    """
+    Plot the oscillation probabilities for muon and electron neutrinos
+    for the GLoBES oscillator and for Dan's oscillator.
+
+    WARNING: This method constructs multiple GLoBES
+    objects, which will result in a segmentation violation when Python
+    exits and tries to clean up the same global C++ object multiple
+    times. In an interactive session, you must hit Ctrl-C to exit after
+    the segmentation violation occurs.
+
+    """
+    message = """WARNING: This method constructs multiple GLoBES
+    objects, which will result in a segmentation violation when Python
+    exits and tries to clean up the same global C++ object multiple
+    times. In an interactive session, you must hit Ctrl-C to exit after
+    the segmentation violation occurs."""
+    print message
+
+    dan = SensitivityCalculator.sensitivityTester(energy, False)
+    globes = SensitivityCalculator.sensitivityTester(energy, True)
+
+    dan_values = dan.plotProbabilities(showPlot=False)
+    globes_values = globes.plotProbabilities(showPlot=False)
+    figure = plt.figure()
+    axes = figure.add_subplot(111)
+    antiText = ""
+    if antiNeutrino:
+        antiText = "anti"
+    axes.set_xlabel(r"$\delta_{CP}$")
+    axes.set_ylabel("Oscillation probability")
+    axes.set_title("Oscillation Probability for " + str(energy) +
+            " GeV " + antiText + "neutrinos over 1300km")
+    neutrinoIndex = int(antiNeutrino) + 1
+    axes.plot(dan_values[0], zip(*dan_values[neutrinoIndex])[0], 'r',
+            dan_values[0], zip(*dan_values[neutrinoIndex])[1], 'k',
+            globes_values[0], zip(*globes_values[neutrinoIndex])[0], 'b',
+            globes_values[0], zip(*globes_values[neutrinoIndex])[1], 'm')
+    legendStrings = ["Dan $e$", r"Dan $\mu$", "GLoBES $e$",
+            r"GLoBES $\mu$"]
+    plt.legend(legendStrings)
+    return figure
