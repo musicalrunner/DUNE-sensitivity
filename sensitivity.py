@@ -428,3 +428,48 @@ def plotGLoBESvsDan(energy, antiNeutrino=False):
             r"GLoBES $\mu$"]
     plt.legend(legendStrings)
     return figure
+
+def plot2dDetectionMaps(spectrum, parameter, valuesToTest):
+    """
+    Plot the number of expected neutrinos as a function of delta CP and
+    the given parameter. All other parameters are taken from
+    Oscillator.NeutrinoParameters.neutrinoParams_best.
+
+    """
+    param_set = [Parameters.neutrinoParams_best.copy() for _ in
+            valuesToTest]
+    for params, value in zip(param_set, valuesToTest):
+        params[parameter] = value
+
+    oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
+        oscParameters=param) for param in param_set]
+    valueSets = [osc.getNumberOfObservedNeutrinos() for osc in
+            oscillators]
+    nues = [values[1] for values in valueSets]
+    numus = [values[2] for values in valueSets]
+    nuebars = [values[3] for values in valueSets]
+    numubars = [values[4] for values in valueSets]
+    figure = plt.figure()
+    def imshow(ax, matrix):
+        ax.imshow(matrix, plt.get_cmap('spectral'), interpolation='nearest',
+            extent=[-np.pi, np.pi, min(valuesToTest),
+                max(valuesToTest)], aspect='auto')
+    nue_axes = figure.add_subplot(2, 2, 1)
+    numu_axes = figure.add_subplot(2, 2, 2)
+    nuebar_axes = figure.add_subplot(2, 2, 3)
+    numubar_axes = figure.add_subplot(2, 2, 4)
+
+    imshow(nue_axes, nues)
+    imshow(numu_axes, numus)
+    imshow(nuebar_axes, nuebars)
+    imshow(numubar_axes, numubars)
+    nue_axes.set_title(r"$\nu_{e}$ Appearance")
+    numu_axes.set_title(r"$\nu_{\mu}$ Disappearance")
+    nuebar_axes.set_title(r"$\bar{\nu}_{e}$ Appearance")
+    numubar_axes.set_title(r"$\bar{\nu}_{e}$ Disappearance")
+
+    nuebar_axes.set_xlabel(r"$\delta_{CP}$")
+    numubar_axes.set_xlabel(r"$\delta_{CP}$")
+    nue_axes.set_ylabel(r"$\sin(\theta_{13})$")
+    nuebar_axes.set_ylabel(r"$\sin(\theta_{13})$")
+    return figure
