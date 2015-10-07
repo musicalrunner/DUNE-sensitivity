@@ -128,6 +128,41 @@ class SensitivityCalculator(object):
         self.nubar_final_states = nubar_final_states
         return (nu_final_states, nubar_final_states)
 
+    def getNumberOfObservedNeutrinos(self):
+        """
+        Get the number of observed neutrinos and antineutrinos at a
+        range of delta CP values.
+
+        Output:
+            A 5-tuple containing lists of corresponding delta-CP values,
+            neutrino (e, mu) detections and antineutrino (e, mu) detections.
+        """
+        if not hasattr(self, 'nu_final_states'):
+            self.calculateOscillations()
+
+        # Combine the results of the oscillations into a single counting
+        # measurement over all the energies in the spectrum.
+        detections = []
+        for spectrum in self.nu_final_states:
+            e, mu = 0, 0
+            for energyResult, weight in zip(spectrum, self.energyWeights):
+                probabilities = energyResult.probabilities()
+                e  += probabilities[0] * weight
+                mu += probabilities[1] * weight
+            detections.append((e, mu))
+        electrons, muons = zip(*detections)
+        nubar_detections = []
+        for spectrum in self.nubar_final_states:
+            ebar, mubar = 0, 0
+            for energyResult, weight in zip(spectrum, self.energyWeights):
+                probabilities = energyResult.probabilities()
+                ebar += probabilities[0] * weight
+                mubar += probabilities[1] * weight
+            nubar_detections.append((ebar, mubar))
+        nubar_electrons, nubar_muons = zip(*nubar_detections)
+        return (self.testDeltaCPs(), electrons, muons, nubar_electrons,
+                nubar_muons)
+
     def plotProbabilities(self, energyBin=0, showPlot=True):
         """
         Plot the probabilities of observing a given flavor for the range
