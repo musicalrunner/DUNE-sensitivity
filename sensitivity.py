@@ -20,7 +20,7 @@ class SensitivityCalculator(object):
     """
     
     def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, spectrum,
-            GLoBES):
+            oscParameters, GLoBES):
         """
         Create a new SensitivityCalculator for muon neutrino
         disappearance.
@@ -32,10 +32,11 @@ class SensitivityCalculator(object):
 
         """
         self.spectrum = spectrum
+        self.params = oscParameters
         self.energies, self.energyWeights = map(list, zip(*spectrum))
         self.energies = [E * U.GeV for E in self.energies]
-        self.energyWeights = (np.asarray(self.energyWeights) /
-                sum(self.energyWeights))
+        self.energyWeights = (np.asarray(self.energyWeights,
+            dtype=np.float64) / sum(self.energyWeights))
         self.baseline = 1300 * U.km
         # Delta CP values to calculate oscillation parameters for
         self.num_deltaCP_values = num_deltaCPs
@@ -44,7 +45,9 @@ class SensitivityCalculator(object):
         self.syst_errors = [0.02, 0.05, 0.02, 0.05]
         self.chi_squares = []
         # Parameter sets representing the different values of delta CP
-        self.param_sets = [Parameters.neutrinoParams_best.copy() for i
+        if not oscParameters:
+            oscParameters = Parameters.neutrinoParams_best
+        self.param_sets = [oscParameters.copy() for i
                 in range(self.num_deltaCP_values)]
         for i in range(self.num_deltaCP_values):
             param_set = self.param_sets[i]
@@ -68,7 +71,7 @@ class SensitivityCalculator(object):
                 params in self.param_sets]
 
     @classmethod
-    def sensitivityTester(cls, spectrum, GLoBES=False):
+    def sensitivityTester(cls, spectrum, oscParameters=None, GLoBES=False):
         """
         Return a SensitivityCalculator set up to scan over fine-grained
         delta-CP values.
@@ -76,10 +79,10 @@ class SensitivityCalculator(object):
         """
         if not hasattr(spectrum, "__len__"):
             spectrum = [(spectrum, 1)]
-        return cls(np.pi, -np.pi, 100, spectrum, GLoBES)
+        return cls(np.pi, -np.pi, 100, spectrum, oscParameters, GLoBES)
 
     @classmethod
-    def probabilityViewer(cls, spectrum, GLoBES=False):
+    def probabilityViewer(cls, spectrum, oscParameters=None, GLoBES=False):
         """
         Return a SensitivityCalculator set up over a few delta-CP
         values.
@@ -87,7 +90,7 @@ class SensitivityCalculator(object):
         """
         if not hasattr(spectrum, "__len__"):
             spectrum = [(spectrum, 1)]
-        return cls(np.pi/2, -np.pi/2, 3, spectrum, GLoBES)
+        return cls(np.pi/2, -np.pi/2, 3, spectrum, oscParameters, GLoBES)
 
     def calculateOscillations(self):
         """
