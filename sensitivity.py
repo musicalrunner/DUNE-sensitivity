@@ -473,3 +473,11 @@ def plot2dDetectionMaps(spectrum, parameter, valuesToTest):
     nue_axes.set_ylabel(r"$\sin(\theta_{13})$")
     nuebar_axes.set_ylabel(r"$\sin(\theta_{13})$")
     return figure
+
+spectrum = {
+        'mono3': [(3, 1)],
+        'mono2': [(2, 1)],
+        'flat': zip(np.arange(1, 5, 1), [1]*4),
+        'peak3': zip(np.arange(0.5, 4.5, 0.5), [.5, 1, 2, 3, 5, 8, 4,
+            1]),
+        }
