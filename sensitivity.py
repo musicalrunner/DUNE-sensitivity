@@ -466,9 +466,9 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     numus = [values[2] for values in valueSets]
     nuebars = [values[3] for values in valueSets]
     numubars = [values[4] for values in valueSets]
-    figure = plt.figure()
+    figure = plt.figure(figsize=(11, 9))
     def imshow(ax, matrix):
-        ax.imshow(matrix, plt.get_cmap('spectral'), interpolation='nearest',
+        return ax.imshow(matrix, plt.get_cmap('spectral'), interpolation='nearest',
             extent=[-np.pi, np.pi, min(valuesToTest),
                 max(valuesToTest)], aspect='auto')
     nue_axes = figure.add_subplot(2, 2, 1)
@@ -476,19 +476,24 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     nuebar_axes = figure.add_subplot(2, 2, 3)
     numubar_axes = figure.add_subplot(2, 2, 4)
 
-    imshow(nue_axes, nues)
-    imshow(numu_axes, numus)
-    imshow(nuebar_axes, nuebars)
-    imshow(numubar_axes, numubars)
+    nue_image = imshow(nue_axes, nues)
+    numu_image = imshow(numu_axes, numus)
+    nuebar_image = imshow(nuebar_axes, nuebars)
+    numubar_image = imshow(numubar_axes, numubars)
     nue_axes.set_title(r"$\nu_{e}$ Appearance")
     numu_axes.set_title(r"$\nu_{\mu}$ Disappearance")
     nuebar_axes.set_title(r"$\bar{\nu}_{e}$ Appearance")
-    numubar_axes.set_title(r"$\bar{\nu}_{e}$ Disappearance")
+    numubar_axes.set_title(r"$\bar{\nu}_{\mu}$ Disappearance")
 
-    nuebar_axes.set_xlabel(r"$\delta_{CP}$")
-    numubar_axes.set_xlabel(r"$\delta_{CP}$")
-    nue_axes.set_ylabel(r"$\sin(\theta_{13})$")
-    nuebar_axes.set_ylabel(r"$\sin(\theta_{13})$")
+    nuebar_axes.set_xlabel(r"$\delta_{CP}$", fontsize=20)
+    numubar_axes.set_xlabel(r"$\delta_{CP}$", fontsize=20)
+    nue_axes.set_ylabel(parameter, fontsize=20)
+    nuebar_axes.set_ylabel(parameter, fontsize=20)
+
+    figure.colorbar(nue_image, ax=nue_axes)
+    figure.colorbar(numu_image, ax=numu_axes)
+    figure.colorbar(nuebar_image, ax=nuebar_axes)
+    figure.colorbar(numubar_image, ax=numubar_axes)
     return figure
 
 spectrum = {
