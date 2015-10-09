@@ -435,14 +435,23 @@ def plotGLoBESvsDan(energy, antiNeutrino=False):
     plt.legend(legendStrings)
     return figure
 
-def plot2dDetectionMaps(spectrum, parameter, valuesToTest):
+def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     """
     Plot the number of expected neutrinos as a function of delta CP and
-    the given parameter. All other parameters are taken from
-    Oscillator.NeutrinoParameters.neutrinoParams_best.
+    the given parameter. delta CP ranges from -pi to pi, and the given
+    parameter ranges over +/- 3sigma on the latest (2014) NuFIT results.
+    All other parameters are fixed at the NuFIT best fit results for the
+    given hierarchy. hierarchy can be either "IO" or "NO" for inverted
+    and normal, respectively.
 
     """
-    param_set = [Parameters.neutrinoParams_best.copy() for _ in
+    parameterSet = Parameters.nufit_NO  # inverted ordering
+    if hierarchy == "IO":  # inverted ordering
+        parameterSet = Parameters.nufit_IO
+    upper = parameterSet['+3sigma'][parameter]
+    lower = parameterSet['-3sigma'][parameter]
+    valuesToTest = np.linspace(upper, lower, numValues)
+    param_set = [parameterSet['best'].copy() for _ in
             valuesToTest]
     for params, value in zip(param_set, valuesToTest):
         params[parameter] = value
