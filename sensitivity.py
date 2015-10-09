@@ -67,7 +67,7 @@ class SensitivityCalculator(object):
             self.oscillatorType = Osc.Oscillator
             self.oscillators = [[
                 self.oscillatorType.fromParameterSet(params, U.rho_e,
-                neutrino_energy) for neutrino_energy in self.energies] for
+                float(neutrino_energy)) for neutrino_energy in self.energies] for
                 params in self.param_sets]
 
     @classmethod
