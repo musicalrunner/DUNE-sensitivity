@@ -131,10 +131,11 @@ class SensitivityCalculator(object):
         self.nubar_final_states = nubar_final_states
         return (nu_final_states, nubar_final_states)
 
-    def getNumberOfObservedNeutrinos(self):
+    def getNumberOfObservedNeutrinos(self, numNu=1, numNubar=1):
         """
         Get the number of observed neutrinos and antineutrinos at a
-        range of delta CP values.
+        range of delta CP values. The given neutrino numbers are the
+        number of unoscillated neutrinos and antineutrinos.
 
         Output:
             A 5-tuple containing lists of corresponding delta-CP values,
@@ -153,7 +154,9 @@ class SensitivityCalculator(object):
                 e  += probabilities[0] * weight
                 mu += probabilities[1] * weight
             detections.append((e, mu))
-        electrons, muons = zip(*detections)
+        electrons, muons = map(np.asarray, zip(*detections))
+        electrons *= numNu
+        muons *= numNu
         nubar_detections = []
         for spectrum in self.nubar_final_states:
             ebar, mubar = 0, 0
@@ -162,7 +165,10 @@ class SensitivityCalculator(object):
                 ebar += probabilities[0] * weight
                 mubar += probabilities[1] * weight
             nubar_detections.append((ebar, mubar))
-        nubar_electrons, nubar_muons = zip(*nubar_detections)
+        nubar_electrons, nubar_muons = map(np.asarray,
+                zip(*nubar_detections))
+        nubar_electrons *= numNubar
+        nubar_muons *= numNubar
         return (self.testDeltaCPs(), electrons, muons, nubar_electrons,
                 nubar_muons)
 
@@ -443,8 +449,10 @@ def plot2dDetectionMaps(spectrum, parameter, valuesToTest):
 
     oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
         oscParameters=param) for param in param_set]
-    valueSets = [osc.getNumberOfObservedNeutrinos() for osc in
-            oscillators]
+    numNu = 100000
+    numNubar = numNu/10.0
+    valueSets = [osc.getNumberOfObservedNeutrinos(numNu, numNubar) for
+            osc in oscillators]
     nues = [values[1] for values in valueSets]
     numus = [values[2] for values in valueSets]
     nuebars = [values[3] for values in valueSets]
