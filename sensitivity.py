@@ -494,7 +494,7 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     figure.colorbar(numu_image, ax=numu_axes)
     figure.colorbar(nuebar_image, ax=nuebar_axes)
     figure.colorbar(numubar_image, ax=numubar_axes)
-    return figure
+    return figure, nues, numus, nuebars, numubars
 
 spectrum = {
         'mono3': [(3, 1)],
