@@ -445,7 +445,7 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     and normal, respectively.
 
     """
-    parameterSet = Parameters.nufit_NO  # inverted ordering
+    parameterSet = Parameters.nufit_NO  # normal ordering
     if hierarchy == "IO":  # inverted ordering
         parameterSet = Parameters.nufit_IO
     upper = parameterSet['+3sigma'][parameter]
