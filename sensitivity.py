@@ -20,7 +20,7 @@ class SensitivityCalculator(object):
     """
     
     def __init__(self, deltaCP_max, deltaCP_min, num_deltaCPs, spectrum,
-            oscParameters, GLoBES):
+            oscParameters, GLoBES, rho_e):
         """
         Create a new SensitivityCalculator for muon neutrino
         disappearance.
@@ -56,22 +56,24 @@ class SensitivityCalculator(object):
 
         # Create an oscillation calculator for each value of delta CP
         self.globes = GLoBES
+        self.rho_e = rho_e if rho_e else U.rho_e
         if GLoBES:
             import Oscillator.Oscillator_GLoBES
             self.oscillatorType = Oscillator.Oscillator_GLoBES.Oscillator_GLoBES
             self.oscillators = [[
-                (self.oscillatorType.fromParameterSet, (params, U.rho_e,
+                (self.oscillatorType.fromParameterSet, (params, self.rho_e,
                 neutrino_energy)) for neutrino_energy in self.energies] for
                 params in self.param_sets]
         else:
             self.oscillatorType = Osc.Oscillator
             self.oscillators = [[
-                self.oscillatorType.fromParameterSet(params, U.rho_e,
+                self.oscillatorType.fromParameterSet(params, self.rho_e,
                 float(neutrino_energy)) for neutrino_energy in self.energies] for
                 params in self.param_sets]
 
     @classmethod
-    def sensitivityTester(cls, spectrum, oscParameters=None, GLoBES=False):
+    def sensitivityTester(cls, spectrum, oscParameters=None,
+            GLoBES=False, rho_e=None):
         """
         Return a SensitivityCalculator set up to scan over fine-grained
         delta-CP values.
@@ -79,7 +81,8 @@ class SensitivityCalculator(object):
         """
         if not hasattr(spectrum, "__len__"):
             spectrum = [(spectrum, 1)]
-        return cls(np.pi, -np.pi, 100, spectrum, oscParameters, GLoBES)
+        return cls(np.pi, -np.pi, 100, spectrum, oscParameters, GLoBES,
+                rho_e)
 
     @classmethod
     def probabilityViewer(cls, spectrum, oscParameters=None, GLoBES=False):
@@ -448,16 +451,26 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     parameterSet = Parameters.nufit_NO  # normal ordering
     if hierarchy == "IO":  # inverted ordering
         parameterSet = Parameters.nufit_IO
-    upper = parameterSet['+3sigma'][parameter]
-    lower = parameterSet['-3sigma'][parameter]
-    valuesToTest = np.linspace(upper, lower, numValues)
     param_set = [parameterSet['best'].copy() for _ in
-            valuesToTest]
-    for params, value in zip(param_set, valuesToTest):
-        params[parameter] = value
-
-    oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
-        oscParameters=param) for param in param_set]
+            range(numValues)]
+    # include support for "parameter" of earth density
+    oscillators = None
+    if parameter == "rho_e":
+        # Use a +/- 10% range
+        upper = U.rho_e * 1.1
+        lower = U.rho_e * 0.9
+        valuesToTest = np.linspace(upper, lower, numValues)
+        oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
+            oscParameters=param, rho_e=rho_e) for param, rho_e in
+            zip(param_set, valuesToTest)]
+    else:
+        upper = parameterSet['+3sigma'][parameter]
+        lower = parameterSet['-3sigma'][parameter]
+        valuesToTest = np.linspace(upper, lower, numValues)
+        for params, value in zip(param_set, valuesToTest):
+            params[parameter] = value
+        oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
+            oscParameters=param) for param in param_set]
     numNu = 100000
     numNubar = numNu/10.0
     valueSets = [osc.getNumberOfObservedNeutrinos(numNu, numNubar) for
