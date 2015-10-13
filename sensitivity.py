@@ -454,13 +454,13 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
     param_set = [parameterSet['best'].copy() for _ in
             range(numValues)]
     # include support for "parameter" of earth density
-    oscillators = None
+    calcs = None
     if parameter == "rho_e":
         # Use a +/- 10% range
         upper = U.rho_e * 1.1
         lower = U.rho_e * 0.9
         valuesToTest = np.linspace(upper, lower, numValues)
-        oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
+        calcs = [SensitivityCalculator.sensitivityTester(spectrum,
             oscParameters=param, rho_e=rho_e) for param, rho_e in
             zip(param_set, valuesToTest)]
     else:
@@ -469,12 +469,12 @@ def plot2dDetectionMaps(spectrum, parameter, hierarchy, numValues=10):
         valuesToTest = np.linspace(upper, lower, numValues)
         for params, value in zip(param_set, valuesToTest):
             params[parameter] = value
-        oscillators = [SensitivityCalculator.sensitivityTester(spectrum,
+        calcs = [SensitivityCalculator.sensitivityTester(spectrum,
             oscParameters=param) for param in param_set]
     numNu = 100000
     numNubar = numNu/10.0
-    valueSets = [osc.getNumberOfObservedNeutrinos(numNu, numNubar) for
-            osc in oscillators]
+    valueSets = [calc.getNumberOfObservedNeutrinos(numNu, numNubar) for
+            calc in calcs]
     nues = [values[1] for values in valueSets]
     numus = [values[2] for values in valueSets]
     nuebars = [values[3] for values in valueSets]
